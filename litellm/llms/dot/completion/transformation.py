@@ -2,7 +2,6 @@
 
 from typing import (
     Optional,
-    Dict,
     Union,
     cast
 )
@@ -15,6 +14,7 @@ from openai import AsyncOpenAI
 
 from litellm.types.utils import ModelResponse
 from litellm.llms.openai.openai import OpenAIChatCompletion
+from litellm.llms.base_llm.chat.transformation import BaseConfig
 from litellm.litellm_core_utils.litellm_logging import Logging
 from litellm.llms.dot.model import DotResponse
 from litellm.llms.openai.common_utils import (
@@ -25,14 +25,9 @@ from litellm.llms.openai.common_utils import (
 
 class DotChatCompletion(OpenAIChatCompletion):
 
-    def _convert_to_model_response_object(
-            self,
-            response_object: Dict,
-            model_response_object: ModelResponse,
-            *_args,
-            **_kwargs
-        ):
-            response_wrapper = DotResponse(**response_object)
+    def _convert_to_model_response_object(*_args, **kwargs):
+            response_wrapper: DotResponse = DotResponse(**kwargs["response_object"])
+            model_response_object: ModelResponse = kwargs["model_response_object"]
 
             model_response_object.usage.total_tokens = response_wrapper.usage.total_tokens
             model_response_object.usage.prompt_tokens = response_wrapper.usage.prompt_tokens
@@ -47,7 +42,10 @@ class DotChatCompletion(OpenAIChatCompletion):
 
     async def acompletion(
         self,
-        data: dict,
+        messages: list,
+        optional_params: dict,
+        litellm_params: dict,
+        provider_config: BaseConfig,
         model: str,
         model_response: ModelResponse,
         logging_obj: Logging,
@@ -62,10 +60,15 @@ class DotChatCompletion(OpenAIChatCompletion):
         drop_params: Optional[bool] = None,
         stream_options: Optional[dict] = None,
         fake_stream: bool = False,
-        *_args,
-        **_kwargs
     ):
         response = None
+        data = await provider_config.async_transform_request(
+            model=model,
+            messages=messages,
+            optional_params=optional_params,
+            litellm_params=litellm_params,
+            headers=headers or {},
+        )
         for _ in range(
             2
         ):
