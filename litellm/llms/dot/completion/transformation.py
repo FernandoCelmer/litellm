@@ -2,6 +2,7 @@
 
 from typing import (
     Optional,
+    Dict,
     Union,
     cast
 )
@@ -10,10 +11,12 @@ import httpx
 import openai
 
 import litellm
+from openai import AsyncOpenAI
 
 from litellm.types.utils import ModelResponse
 from litellm.llms.openai.openai import OpenAIChatCompletion
 from litellm.litellm_core_utils.litellm_logging import Logging
+from litellm.llms.dot.model import DotResponse
 from litellm.llms.openai.common_utils import (
     OpenAIError,
     drop_params_from_unprocessable_entity_error,
@@ -22,9 +25,25 @@ from litellm.llms.openai.common_utils import (
 
 class DotChatCompletion(OpenAIChatCompletion):
 
-    def _convert_to_model_response_object(*args, **kwargs):
-        model_response_object = kwargs.get("model_response_object")
-        return model_response_object
+    def _convert_to_model_response_object(
+            self,
+            response_object: Dict,
+            model_response_object: ModelResponse,
+            *_args,
+            **_kwargs
+        ):
+            response_wrapper = DotResponse(**response_object)
+
+            model_response_object.usage.total_tokens = response_wrapper.usage.total_tokens
+            model_response_object.usage.prompt_tokens = response_wrapper.usage.prompt_tokens
+
+            for index, choice in enumerate(model_response_object.choices):
+                choice.index = response_wrapper.content[index].id
+                choice.message.role = response_wrapper.content[index].role
+                choice.message.content = response_wrapper.content[index].text
+                choice.finish_reason = response_wrapper.additional_data_messages.finish_reason
+
+            return model_response_object
 
     async def acompletion(
         self,
@@ -43,13 +62,15 @@ class DotChatCompletion(OpenAIChatCompletion):
         drop_params: Optional[bool] = None,
         stream_options: Optional[dict] = None,
         fake_stream: bool = False,
+        *_args,
+        **_kwargs
     ):
         response = None
         for _ in range(
             2
         ):
             try:
-                openai_aclient: AsyncOpenAI = self._get_openai_client(  # type: ignore
+                openai_aclient: AsyncOpenAI = self._get_openai_client(
                     is_async=True,
                     api_key=api_key,
                     api_base=api_base,
