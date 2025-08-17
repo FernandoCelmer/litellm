@@ -3974,6 +3974,17 @@ def get_optional_params(  # noqa: PLR0915
                     else False
                 ),
             )
+    elif custom_llm_provider == "dot":
+        optional_params = litellm.DotChatConfig().map_openai_params(
+            non_default_params=non_default_params,
+            optional_params=optional_params,
+            model=model,
+            drop_params=(
+                drop_params
+                if drop_params is not None and isinstance(drop_params, bool)
+                else False
+            ),
+        )
     elif provider_config is not None:
         optional_params = provider_config.map_openai_params(
             non_default_params=non_default_params,
@@ -7004,6 +7015,8 @@ class ProviderConfigManager:
             return litellm.OCIChatConfig()
         elif litellm.LlmProviders.HYPERBOLIC == provider:
             return litellm.HyperbolicChatConfig()
+        elif litellm.LlmProviders.DOT == provider:
+            return litellm.DotChatConfig()
         return None
 
     @staticmethod

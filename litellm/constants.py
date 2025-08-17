@@ -284,6 +284,7 @@ LITELLM_CHAT_PROVIDERS = [
     "oci",
     "morph",
     "lambda_ai",
+    "dot",
 ]
 
 LITELLM_EMBEDDING_PROVIDERS_SUPPORTING_INPUT_ARRAY_OF_TOKENS = [

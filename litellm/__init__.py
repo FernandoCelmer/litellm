@@ -1010,6 +1010,7 @@ from .llms.custom_llm import CustomLLM
 from .llms.bedrock.chat.converse_transformation import AmazonConverseConfig
 from .llms.openai_like.chat.handler import OpenAILikeChatConfig
 from .llms.aiohttp_openai.chat.transformation import AiohttpOpenAIChatConfig
+from .llms.dot.chat.transformation import DotChatConfig
 from .llms.galadriel.chat.transformation import GaladrielChatConfig
 from .llms.github.chat.transformation import GithubChatConfig
 from .llms.empower.chat.transformation import EmpowerChatConfig
