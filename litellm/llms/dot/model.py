@@ -1,15 +1,15 @@
 """Dot Model"""
 
-from typing import List
+from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ContentItem(BaseModel):
-    id: int
-    role: str
-    text: str
-    type: str
+    id: int = Field(default=0)
+    role: Optional[str] = Field(default=None)
+    text: Optional[str] = Field(default=None)
+    type: Optional[str] = Field(default=None)
 
 
 class Usage(BaseModel):
