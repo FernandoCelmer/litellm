@@ -148,6 +148,7 @@ from .llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
 from .llms.custom_llm import CustomLLM, custom_chat_llm_router
 from .llms.databricks.embed.handler import DatabricksEmbeddingHandler
 from .llms.deprecated_providers import aleph_alpha, palm
+from .llms.dot.completion.transformation import DotChatCompletion
 from .llms.gemini.common_utils import get_api_key_from_env
 from .llms.groq.chat.handler import GroqChatCompletion
 from .llms.huggingface.embedding.handler import HuggingFaceEmbedding
@@ -255,6 +256,7 @@ base_llm_aiohttp_handler = BaseLLMAIOHTTPHandler()
 sagemaker_chat_completion = SagemakerChatHandler()
 bytez_transformation = BytezChatConfig()
 oci_transformation = OCIChatConfig()
+dot_chat_completions = DotChatCompletion()
 ####### COMPLETION ENDPOINTS ################
 
 
@@ -2062,6 +2064,81 @@ def completion(  # type: ignore # noqa: PLR0915
                 client=client,
                 provider_config=provider_config,
             )
+        elif custom_llm_provider == "dot":
+            api_base = (
+                api_base
+                or litellm.api_base
+                or get_secret("OPENAI_BASE_URL")
+                or get_secret("OPENAI_API_BASE")
+                or "https://api.openai.com/v1"
+            )
+            organization = (
+                organization
+                or litellm.organization
+                or get_secret("OPENAI_ORGANIZATION")
+                or None
+            )
+            openai.organization = organization
+            api_key = (
+                api_key
+                or litellm.api_key
+                or litellm.openai_key
+                or get_secret("OPENAI_API_KEY")
+            )
+
+            headers = headers or litellm.headers
+
+            if extra_headers is not None:
+                optional_params["extra_headers"] = extra_headers
+
+            if (
+                litellm.enable_preview_features and metadata is not None
+            ):
+                optional_params["metadata"] = add_openai_metadata(metadata)
+
+            config = litellm.DotChatConfig.get_config()
+            for k, v in config.items():
+                if (
+                    k not in optional_params
+                ):
+                    optional_params[k] = v
+
+            try:
+                response = dot_chat_completions.completion(
+                    model=model,
+                    messages=messages,
+                    headers=headers,
+                    model_response=model_response,
+                    print_verbose=print_verbose,
+                    api_key=api_key,
+                    api_base=api_base,
+                    acompletion=acompletion,
+                    logging_obj=logging,
+                    optional_params=optional_params,
+                    litellm_params=litellm_params,
+                    logger_fn=logger_fn,
+                    timeout=timeout,
+                    custom_prompt_dict=custom_prompt_dict,
+                    client=client,
+                    organization=organization,
+                    custom_llm_provider=custom_llm_provider,
+                )
+            except Exception as e:
+                logging.post_call(
+                    input=messages,
+                    api_key=api_key,
+                    original_response=str(e),
+                    additional_args={"headers": headers},
+                )
+                raise e
+
+            if optional_params.get("stream", False):
+                logging.post_call(
+                    input=messages,
+                    api_key=api_key,
+                    original_response=response,
+                    additional_args={"headers": headers},
+                )
         elif (
             "replicate" in model
             or custom_llm_provider == "replicate"
